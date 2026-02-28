@@ -78,7 +78,7 @@ Enterprise-ready security hardening script for Linux virtual machines, combining
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/<your-username>/hardened-vm-security.git
+git clone https://github.com/luisitsilva/hardened-vm-security.git
 cd hardened-vm-security
 chmod +x secure_vm_hardened.sh
 sudo ./secure_vm_hardened.sh
