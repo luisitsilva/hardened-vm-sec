@@ -6,6 +6,9 @@
 # ClamAV (on-demand only) + rkhunter
 # ==============================================================
 
+# Fallback if EUID is not defined
+: "${EUID:=$(id -u)}"
+
 set -euo pipefail
 
 ### ---------------- CONFIGURATION ---------------- ###
