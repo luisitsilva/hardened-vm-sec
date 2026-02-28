@@ -1,299 +1,139 @@
-🛡 Enterprise VM Security Deployment
+# Hardened VM Security Deployment
 
-Hypervisor-aware, production-grade Linux security deployment script for virtual machines running on:
+![Security](https://img.shields.io/badge/security-hardened-green)
+
+Enterprise-ready security hardening script for Linux virtual machines, combining **ClamAV** (on-demand and scheduled scans) and **Rootkit Hunter (rkhunter)** offline scanning. Designed for production servers behind NAT (non-internet-facing), supporting **Debian 13 (Trixie)** and common hypervisors: VMware, Proxmox, KVM.
+
+---
+
+## Features
+
+- **ClamAV + ClamTk** (GUI optional)
+  - On-demand and scheduled scans
+  - Throttled with `nice` and `ionice` for performance-safe scanning
+  - Quarantine directory at `/opt/quarantine`
+  - Malware auto-removal option (`--remove=yes`) configurable
+  - Excludes sensitive system directories (`/proc`, `/sys`, `/dev`, etc.)
+- **Rootkit Hunter (rkhunter)**
+  - Offline-safe, enterprise-mode configuration
+  - Daily cron scans
+  - Logs warnings via email
+- **Log rotation**
+  - Weekly rotation, keeps 8 compressed logs
+- **Cron automation**
+  - Daily ClamAV database updates
+  - Daily ClamAV scans
+  - Daily rkhunter scans
+- **Hypervisor aware**
+  - Custom excludes for VMware shared folders, Proxmox, and KVM environments
+- **Interactive scan prompt**
+  - At the end of the script, optionally run ClamAV and rkhunter immediately
+
+---
+
+## 🔒 Hardened VM Security Workflow
+
+![Hardened VM Security Workflow](hardened_vm_workflow.png)
+
+### Workflow Overview
+
+1. **ClamAV**:
+   - Updates virus definitions daily via `freshclam`.
+   - Scans VM directories on-demand or via cron.
+   - Moves infected files to `/opt/quarantine`.
+   - Throttled with `nice` and `ionice` to avoid affecting production workloads.
+
+2. **rkhunter**:
+   - Offline scanning for rootkits, backdoors, and suspicious files.
+   - Uses local mirrors (`mirrors.dat`) to avoid internet access.
+   - Logs warnings and sends email notifications if issues detected.
+
+3. **Logging & Alerts**:
+   - Scan logs rotated weekly (`/var/log/security/`)
+   - Email alerts to system administrator for infections or warnings.
+   - Quarantine hardened with restricted permissions and optional immutable flag.
+
+---
+
+## Quarantine Directory
+
+- Location: `/opt/quarantine`
+- Permissions: `700` (root only)
+- Optional immutable flag (`chattr +i`) applied when supported
+- All infected files moved here automatically by ClamAV
+
+---
+
+## Logs
+
+- Location: `/var/log/security/`
+- Files:
+  - `clamav_scan.log`
+  - `rkhunter_scan.log`
+
+---
+
+## Installation & Usage
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/<your-username>/hardened-vm-security.git
+cd hardened-vm-security
+chmod +x secure_vm_hardened.sh
+sudo ./secure_vm_hardened.sh
+Do you want to run a ClamAV and rkhunter scan now? (yes/no)
+
+Cron Jobs
+Task	Schedule	Script/File
+ClamAV database update	Daily 03:00	freshclam --quiet
+ClamAV scan	Daily 04:00	/usr/local/bin/vm_clamscan.sh
+rkhunter scan	Daily 02:30	/usr/local/bin/vm_rkhunter.sh
+Email Notifications
+
+Root email receives scan logs
+
+ClamAV:
+
+Infection detected → email with scan log
+
+Scan error → email with log
+
+rkhunter:
+
+Any warnings → email with log
+
+Supported Platforms
+
+Debian 13 (Trixie) — fully tested
+
+RedHat-based systems — partial support, may require adjustments
+
+Virtualization:
 
 VMware
 
-Proxmox VE
+Proxmox
 
 KVM
 
-Designed for NAT-isolated environments, production servers, and enterprise Linux desktops.
+Security Considerations
 
-🔐 Overview
+Offline-safe rkhunter for NAT-only VMs
 
-This project provides a hardened, performance-optimized deployment script that installs and configures:
+Hardened quarantine directory
 
-ClamAV (on-demand scanning only)
+CPU/IO throttled scans to avoid production impact
 
-ClamTk (desktop systems only)
+Only local mirrors for rkhunter
 
-rkhunter
+Cross-filesystem scans disabled for safety
 
-Daily signature updates
+Contributing
 
-Daily scheduled scans
+Contributions welcome! Please test on staging VMs before production deployment.
+Standard GitHub PR workflow applies.
 
-Secure quarantine handling
+License
 
-Email alerting
-
-Log rotation
-
-VM-aware performance throttling
-
-This solution is specifically tuned for virtualized environments to avoid I/O storms and CPU contention on shared hypervisor storage.
-
-🚀 Features
-✔ Hypervisor-Aware
-
-Detects virtualization automatically
-
-Adjusts exclusions for:
-
-VMware shared folders
-
-Docker
-
-LXC
-
-libvirt
-
-Mounted ISOs
-
-Disables cross-filesystem scanning
-
-✔ Production-Safe Performance Controls
-
-nice 19
-
-ionice -c3 (idle I/O class)
-
-Maximum file size limit
-
-Maximum total scan size limit
-
-Maximum file count limit
-
-Excludes virtual filesystems (/proc, /sys, /dev, /run)
-
-✔ Security Hardening
-
-ClamAV daemon disabled (no unnecessary service exposure)
-
-On-demand scanning only
-
-Immutable quarantine directory (chattr +i)
-
-Root-only scan scripts
-
-Hardened cron permissions
-
-Log rotation (compressed, weekly)
-
-✔ Email Alerts
-
-Infection detected
-
-Scan error
-
-rkhunter warning
-
-Alerts are sent to:
-
-root
-
-(Modify in configuration if needed.)
-
-🖥 Supported Operating Systems
-
-Automatically detects and supports:
-
-Debian
-
-Ubuntu
-
-RHEL
-
-AlmaLinux
-
-Rocky Linux
-
-CentOS
-
-📦 Installation
-
-Clone repository:
-
-git clone https://github.com/yourorg/linux-vm-enterprise-antivirus.git
-cd linux-vm-enterprise-antivirus
-
-Make executable:
-
-chmod +x secure_vm_hardened.sh
-
-Run:
-
-sudo ./secure_vm_hardened.sh
-⚙ Configuration
-
-Edit the configuration section at the top of the script:
-
-SCAN_PATHS="/home /var/www /tmp"
-EMAIL="root"
-REMOVE_INFECTED="no"
-Enable automatic removal instead of quarantine:
-REMOVE_INFECTED="yes"
-🗂 Default Scan Schedule
-Task	Time	Tool
-rkhunter check	02:30	rkhunter
-Virus DB update	03:00	ClamAV
-Malware scan	04:00	ClamAV
-
-Cron files installed in:
-
-/etc/cron.d/
-🧠 Architecture Decisions
-Why Disable ClamAV Daemon?
-
-Reduced attack surface
-
-No open sockets
-
-No background CPU usage
-
-Suitable for NAT-isolated environments
-
-Why Use ionice Idle Class?
-
-In shared storage hypervisors (VMware, Proxmox, KVM):
-
-Prevents disk I/O starvation
-
-Avoids noisy neighbor effects
-
-Reduces latency impact on production workloads
-
-Why Limit Scan Size?
-
-Prevents:
-
-Snapshot performance degradation
-
-Backup interference
-
-Storage controller overload
-
-🔐 Quarantine Model
-
-Infected files are moved to:
-
-/var/quarantine
-
-Permissions:
-
-700
-
-Immutable flag applied where supported
-
-To remove immutable flag manually:
-
-chattr -i /var/quarantine
-📊 Logging
-
-Logs stored in:
-
-/var/log/security/
-
-Rotated weekly via:
-
-/etc/logrotate.d/vm_security
-
-Retention:
-
-8 compressed rotations
-
-🔒 Security Scope
-
-This tool is designed for:
-
-Internal enterprise VMs
-
-NAT-protected environments
-
-Production workloads
-
-Security baseline enforcement
-
-This tool is NOT intended as a replacement for:
-
-EDR platforms
-
-SIEM systems
-
-Advanced behavioral detection
-
-📌 Recommended Add-Ons
-
-For maximum enterprise security posture, consider adding:
-
-AIDE (file integrity monitoring)
-
-auditd baseline rules
-
-Centralized syslog forwarding
-
-Fail2ban
-
-SELinux/AppArmor enforcement
-
-Offline full weekly scan job
-
-🛠 Repository Structure
-.
-├── secure_vm_hardened.sh
-├── README.md
-└── LICENSE
-🧪 Testing
-
-Tested on:
-
-Ubuntu 22.04 LTS (VMware & Proxmox)
-
-Debian 12
-
-Rocky Linux 9 (KVM)
-
-AlmaLinux 9
-
-⚠ Limitations
-
-Requires working mail system for alerts
-
-Not optimized for container host deep scanning
-
-Not designed for internet-facing gateway malware filtering
-
-📜 License
-
-MIT License (recommended for GitHub enterprise tooling)
-
-🤝 Contributing
-
-Contributions welcome.
-
-Please ensure:
-
-Code follows security best practices
-
-No daemon exposure introduced
-
-Performance safety preserved
-
-Hypervisor awareness maintained
-
-🛡 Enterprise Security Philosophy
-
-This project follows principles of:
-
-Minimal attack surface
-
-Deterministic behavior
-
-Explicit scheduling
-
-Controlled resource usage
-
-Least privilege
-
-No unnecessary background services
+MIT License © 2026 FLASHINTELL.NET / Luis Silva
